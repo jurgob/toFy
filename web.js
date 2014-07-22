@@ -13,5 +13,5 @@ app.put('/list/:name/item/:itemname', function(req, res){
   res.send('added item '+ req.params.itemname+' to list: ' + req.params.name);
 });
 
-app.listen(80);
-console.log('Listening on port 80');
+app.listen(8080);
+console.log('Listening on port 8080');
