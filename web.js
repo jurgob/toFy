@@ -13,7 +13,7 @@ app.put('/list/:name/item/:itemname', function(req, res){
   res.send('added item '+ req.params.itemname+' to list: ' + req.params.name);
 });
 
-var port = Number(5000);
+var port = Number(process.env.PORT || 3000);
 app.listen(port, function() {
   console.log("Listening on " + port);
 });
