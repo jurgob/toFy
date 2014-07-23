@@ -14,7 +14,8 @@ var status = {
 }
 
 var lists = {};
-var listsDB = 'data/lists.json';
+var listsDB = 'tmp/lists.json';
+var logFile = 'tmp/log.csv';
 
 function saveDB(){
 	jf.writeFile(listsDB, lists, function(err) {
@@ -31,11 +32,11 @@ function loadDB(){
 }
 
 function logRequest(req) {
-	fs.appendFile('data/log.csv',new Date().toString()+", "+req.ip+", "+req.method+", "+req.path,function (err){});
+	fs.appendFile(logFile,new Date().toString()+", "+req.ip+", "+req.method+", "+req.path,function (err){});
 }
 
 function logResponse(statusCode) {
-	fs.appendFile('data/log.csv',", "+statusCode+"\n",function (err){});
+	fs.appendFile(logFile,", "+statusCode+"\n",function (err){});
 }
 
 
