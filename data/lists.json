@@ -6,6 +6,19 @@
       "pollo",
       "orco",
       "porco"
+    ],
+    "password": ""
+  },
+  "secret_cestil": {
+    "password": "waterstr",
+    "items": [
+      "supersegretissim"
     ]
+  },
+  "super_secret_cestil": {
+    "items": [
+      "ciccia"
+    ],
+    "password": "waterstr"
   }
 }

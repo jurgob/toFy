@@ -33,7 +33,7 @@ function r(statusCode,data){
 }
 
 function listExists(listName) {
-	return typeof(lists[listName]) == "object";
+	return typeof lists[listName] === "object";
 }
 
 function itemExists(listName,itemName) {
@@ -42,15 +42,47 @@ function itemExists(listName,itemName) {
 
 function getPassword(req) {
 	b64password = req.get('password');
-	if (typeof(b64password) != "undefined")
+	if (typeof b64password != "undefined")
 		return (new Buffer(b64password, 'base64')).toString();
 	else 
 		return "";
 }
 
+function getNewPassword(req) {
+	b64password = req.get('newpassword');
+	if (typeof b64password != "undefined")
+		return (new Buffer(b64password, 'base64')).toString();
+	else 
+		return "";
+}
+
+
+function checkPassword(listName,req){
+	password = getPassword(req);
+	if (typeof lists[listName].password === "undefined" || lists[listName].password === null || lists[listName].password === "")
+		return true;
+	else
+		return lists[listName].password === password;
+}
+
+app.put('/api/v1/list/:name/password', function(req, res){
+  if (listExists(req.params.name)){
+	if (checkPassword(req.params.name,req)){
+		lists[req.params.name]["password"] =  getNewPassword(req);
+		saveDB();
+		res.json(r(status.ok));
+	} 
+	else res.json(r(status.unauthorized));
+  } 
+  else res.json(r(status.notFound));
+});
+
 app.get('/api/v1/list/:name', function(req, res){
   if (listExists(req.params.name)){
-	res.json(r(status.ok,{items:lists[req.params.name].items}));
+	if (checkPassword(req.params.name,req))
+		res.json(r(status.ok,{items:lists[req.params.name].items}));
+	else
+		res.json(r(status.unauthorized));
   } else {
   	res.json(r(status.notFound));
   } 
@@ -58,9 +90,13 @@ app.get('/api/v1/list/:name', function(req, res){
 
 app.delete('/api/v1/list/:name', function(req, res){
   if (listExists(eq.params.name)){
-	delete(lists[req.params.name]);
-	saveDB();
-	res.json(r(status.ok));
+	if (checkPassword(req.params.name,req)){
+		delete(lists[req.params.name]);
+		saveDB();
+		res.json(r(status.ok));
+	} else
+		res.json(r(status.unauthorized));
+
   } else {
   	res.json(r(status.notFound));
   } 
@@ -68,7 +104,7 @@ app.delete('/api/v1/list/:name', function(req, res){
 
 app.put('/api/v1/list/:name', function(req, res){
   if (!listExists(req.params.name)){
-	lists[req.params.name] = {items:[]};
+	lists[req.params.name] = {"items":[],"password":getPassword(req)}; 
 	saveDB();
 	res.json(r(status.ok));
   } else {
@@ -78,6 +114,7 @@ app.put('/api/v1/list/:name', function(req, res){
 
 app.put('/api/v1/list/:name/item/:itemname', function(req, res){
   if (listExists(req.params.name)){
+	if (checkPassword(req.params.name,req)){
 	  if (!itemExists(req.params.name,req.params.itemname)){
 		lists[req.params.name].items.push(req.params.itemname);		
 		saveDB();
@@ -85,24 +122,27 @@ app.put('/api/v1/list/:name/item/:itemname', function(req, res){
   	  } else {
   		res.json(r(status.conflict));
 	  } 
+	} else
+		res.json(r(status.unauthorized));
   } else {
   	res.json(r(status.preconditionFailed));
   } 
 });
 
 app.delete('/api/v1/list/:name/item/:itemname', function(req, res){
-  if (listExists(req.params.name)){
-	  if (itemExists(req.params.name,req.params.itemname)){
-  		var idx = lists[req.params.name].items.lastIndexOf(req.params.itemname);
-		lists[req.params.name].items.splice(idx,1);
-		saveDB();
-		res.json(r(status.ok,{"items":lists[req.params.name].items}));
-	  } else {
-		res.json(r(status.notFound));
-	  } 
-  } else {
-  	res.json(r(status.preconditionFailed));
-  } 
+	if (listExists(req.params.name)){
+		if (checkPassword(req.params.name,req)){
+	  		if (itemExists(req.params.name,req.params.itemname)){
+  				var idx = lists[req.params.name].items.lastIndexOf(req.params.itemname);
+				lists[req.params.name].items.splice(idx,1);
+				saveDB();
+				res.json(r(status.ok,{"items":lists[req.params.name].items}));
+	  		} 
+			else res.json(r(status.notFound));
+		} 
+		else res.json(r(status.unauthorized));
+  	} 
+	else res.json(r(status.preconditionFailed));
 });
 
 app.get('/', function(req, res){
