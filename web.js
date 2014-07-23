@@ -14,8 +14,8 @@ var status = {
 }
 
 var lists = {};
-var listsDB = 'tmp/lists.json';
-var logFile = 'tmp/log.csv';
+var listsDB = __dirname + '/tmp/lists.json';
+var logFile = __dirname + '/tmp/log.csv';
 
 function saveDB(){
 	jf.writeFile(listsDB, lists, function(err) {
