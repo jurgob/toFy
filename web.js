@@ -1,7 +1,7 @@
 var express = require('express');
 var app = express();
 
-var lists = {"cestil":{"items":["cane","gato"]}};
+var lists = {"cestil":{"items":["cane","gatto","pollo"]}};
 
 app.get('/list/:name', function(req, res){
   if (typeof(lists[req.params.name]) == "object"){
@@ -31,12 +31,12 @@ app.put('/list/:name', function(req, res){
 
 app.put('/list/:name/item/:itemname', function(req, res){
   if (typeof(lists[req.params.name]) == "object"){
-	  if (typeof(lists[req.params.name]) == "object"){
-  		res.json({status:409});
-  	  } else {
-		lists[req.params.name] = {items:[]};
+	  if (lists[req.params.name].items.lastIndexOf(req.params.itemname) == -1){
+		lists[req.params.name].items.push(req.params.itemname);		
 		res.json({status:200,data:{}});
-	  }   
+  	  } else {
+  		res.json({status:409});
+	  } 
   } else {
   	res.json({status:412});
   } 
@@ -44,7 +44,13 @@ app.put('/list/:name/item/:itemname', function(req, res){
 
 app.delete('/list/:name/item/:itemname', function(req, res){
   if (typeof(lists[req.params.name]) == "object"){
-	res.json({status:200,data:{items:lists[req.params.name]}});
+	  if (lists[req.params.name].items.lastIndexOf(req.params.itemname) == -1){
+		res.json({status:404});
+	  } else {
+  		var idx = lists[req.params.name].items.lastIndexOf(req.params.itemname);
+		lists[req.params.name].items.splice(idx,1);
+		res.json({status:200,data:{}});
+	  } 
   } else {
   	res.json({status:412});
   } 
@@ -53,7 +59,6 @@ app.delete('/list/:name/item/:itemname', function(req, res){
 app.get('/', function(req, res){
   res.sendfile(__dirname + '/index.html');
 });
-
 
 var port = Number(process.env.PORT || 3000);
 app.listen(port, function() {
