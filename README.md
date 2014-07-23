@@ -22,7 +22,7 @@ The server offers a set of REST api for other clients to connect and edit the li
     * Return: *{status:200|400|401|404, data:{}}*
     * Description: *Gets a list from the server. A password is required if the list has a password.*
 
-* **Set Password:** HTTP PATCH list/[listname]/password
+* **Set Password:** HTTP PUT list/[listname]/password
     * Header parameters: *password (base64)*, *newpassword (base64)*
     * Return: *{status:200|400|401|404, data:{}}*
     * Description: *Set the password for a list, a blank password is equivalent to no password. A password is required if the list has already a password.*
