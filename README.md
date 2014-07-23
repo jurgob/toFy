@@ -22,7 +22,7 @@ The server offers a set of REST api for other clients to connect and edit the li
     * Return: *{status:200|400|401|404, data:{}}*
     * Description: *Gets a list from the server. A password is required if the list has a password.*
 
-* **Add an item to a list:** AHTTP PUT list/[listname]/item/[itemname]
+* **Add an item to a list:** HTTP PUT list/[listname]/item/[itemname]
     * Header parameters: *password (base64)*
     * Return: *{status:200|400|401|409|412, data:{items:["item","item"...]}}*
     * Description: *Adds an item to a list. A password is required if the list has a password.*
