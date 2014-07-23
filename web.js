@@ -24,7 +24,10 @@ function saveDB(){
 }
 
 function loadDB(){
-	jf.readFile(listsDB, function(err, obj) { lists = obj; });
+	jf.readFile(listsDB, function(err, obj) { 
+		if (typeof obj != "undefined" && obj != null)
+			lists = obj;
+	});
 }
 
 function logRequest(req) {
