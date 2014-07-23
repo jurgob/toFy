@@ -34,11 +34,12 @@ The server offers a set of REST api for other clients to connect and edit the li
 
 
 ## Status
-The return codes mimic the HTTP protocol return codes.
+The return codes mimic the HTTP protocol return codes:
 * **400**: Bad request (wrong syntax)
 * **401**: Unauthorised (wrong password)
 * **404**: Not found (list or item does not exist)
 * **409**: Conflict (adding existing item/list)
-* **412**: Precondition failed (list does not exist when an item is addes) **200**: Ok
+* **412**: Precondition failed (list does not exist when an item is addes)
+* **200**: Ok
 
 
