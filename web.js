@@ -40,6 +40,14 @@ function itemExists(listName,itemName) {
 	return lists[listName].items.lastIndexOf(itemName) != -1;
 }
 
+function getPassword(req) {
+	b64password = req.get('password');
+	if (typeof(b64password) != "undefined")
+		return (new Buffer(b64password, 'base64')).toString();
+	else 
+		return "";
+}
+
 app.get('/api/v1/list/:name', function(req, res){
   if (listExists(req.params.name)){
 	res.json(r(status.ok,{items:lists[req.params.name].items}));
