@@ -10,7 +10,8 @@
   "dependencies": {
     "express": "^4.6.1",
     "jsonfile": "^1.2.0",
-    "logfmt": "^1.1.2"
+    "logfmt": "^1.1.2",
+    "redis": "^0.11.0"
   },
   "engines": {
     "node": "0.10.x"

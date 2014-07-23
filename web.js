@@ -4,6 +4,17 @@ var jf = require('jsonfile');
 var util = require('util');
 var fs = require('fs');
 
+var redis = require('redis');
+var url = require('url');
+var redisURL = url.parse(process.env.REDISCLOUD_URL);
+var client = redis.createClient(redisURL.port, redisURL.hostname, {no_ready_check: true});
+client.auth(redisURL.auth.split(":")[1]);
+
+//client.set('foo', 'bar');
+//client.get('foo', function (err, reply) {
+//    console.log(reply.toString()); // Will print `bar`
+//});
+
 var status = {
 	"ok":200,
 	"bad":400,
