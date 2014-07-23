@@ -1,58 +1,82 @@
 var express = require('express');
 var app = express();
 
+var status = {
+	"ok":200,
+	"bad":400,
+	"unauthorized":401,
+	"notFound":404,
+	"conflict":409,
+	"preconditionFailed":412
+}
+
 var lists = {"cestil":{"items":["cane","gatto","pollo"]}};
 
+
+function r(statusCode,data){
+	if (typeof data === "undefined")
+		data = {}
+	return {"status":statusCode,"data":data};
+}
+
+function listExists(listName) {
+	return typeof(lists[listName]) == "object";
+}
+
+function itemExists(listName,itemName) {
+	return lists[listName].items.lastIndexOf(itemName) != -1;
+}
+
 app.get('/api/v1/list/:name', function(req, res){
-  if (typeof(lists[req.params.name]) == "object"){
-	res.json({status:200,data:{items:lists[req.params.name].items}});
+  if (listExists(req.params.name)){
+	res.json(r(status.ok,{items:lists[req.params.name].items}));
   } else {
-  	res.json({status:404});
+  	res.json(r(status.notFound));
   } 
 });
 
 app.delete('/api/v1/list/:name', function(req, res){
-  if (typeof(lists[req.params.name]) == "object"){
+  if (listExists(eq.params.name)){
 	delete(lists[req.params.name]);
-	res.json({status:200,data:{}});
+	res.json(r(status.ok));
   } else {
-  	res.json({status:404});
+  	res.json(r(status.notFound));
   } 
 });
 
 app.put('/api/v1/list/:name', function(req, res){
-  if (typeof(lists[req.params.name]) == "object"){
-  	res.json({status:409});
-  } else {
+  if (!listExists(req.params.name)){
 	lists[req.params.name] = {items:[]};
-	res.json({status:200,data:{}});
+	res.json(r(status.ok));
+  } else {
+  	res.json(r(status.conflict));
   } 
 });
 
 app.put('/api/v1/list/:name/item/:itemname', function(req, res){
-  if (typeof(lists[req.params.name]) == "object"){
-	  if (lists[req.params.name].items.lastIndexOf(req.params.itemname) == -1){
+  if (listExists(req.params.name)){
+	  if (!itemExists(req.params.name,req.params.itemname)){
 		lists[req.params.name].items.push(req.params.itemname);		
-		res.json({status:200,data:{}});
+		res.json(r(status.ok,{"items":lists[req.params.name].items}));
   	  } else {
-  		res.json({status:409});
+  		res.json(r(status.conflict));
 	  } 
   } else {
-  	res.json({status:412});
+  	res.json(r(status.preconditionFailed));
   } 
 });
 
 app.delete('/api/v1/list/:name/item/:itemname', function(req, res){
-  if (typeof(lists[req.params.name]) == "object"){
-	  if (lists[req.params.name].items.lastIndexOf(req.params.itemname) == -1){
-		res.json({status:404});
-	  } else {
+  if (listExists(req.params.name)){
+	  if (itemExists(req.params.name,req.params.itemname)){
   		var idx = lists[req.params.name].items.lastIndexOf(req.params.itemname);
 		lists[req.params.name].items.splice(idx,1);
-		res.json({status:200,data:{}});
+		res.json(r(status.ok,{"items":lists[req.params.name].items}));
+	  } else {
+		res.json(r(status.notFound));
 	  } 
   } else {
-  	res.json({status:412});
+  	res.json(r(status.preconditionFailed));
   } 
 });
 
