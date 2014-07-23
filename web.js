@@ -3,7 +3,7 @@ var app = express();
 
 var lists = {"cestil":{"items":["cane","gatto","pollo"]}};
 
-app.get('/list/:name', function(req, res){
+app.get('/api/v1/list/:name', function(req, res){
   if (typeof(lists[req.params.name]) == "object"){
 	res.json({status:200,data:{items:lists[req.params.name]}});
   } else {
@@ -11,7 +11,7 @@ app.get('/list/:name', function(req, res){
   } 
 });
 
-app.delete('/list/:name', function(req, res){
+app.delete('/api/v1/list/:name', function(req, res){
   if (typeof(lists[req.params.name]) == "object"){
 	delete(lists[req.params.name]);
 	res.json({status:200,data:{}});
@@ -20,7 +20,7 @@ app.delete('/list/:name', function(req, res){
   } 
 });
 
-app.put('/list/:name', function(req, res){
+app.put('/api/v1/list/:name', function(req, res){
   if (typeof(lists[req.params.name]) == "object"){
   	res.json({status:409});
   } else {
@@ -29,7 +29,7 @@ app.put('/list/:name', function(req, res){
   } 
 });
 
-app.put('/list/:name/item/:itemname', function(req, res){
+app.put('/api/v1/list/:name/item/:itemname', function(req, res){
   if (typeof(lists[req.params.name]) == "object"){
 	  if (lists[req.params.name].items.lastIndexOf(req.params.itemname) == -1){
 		lists[req.params.name].items.push(req.params.itemname);		
@@ -42,7 +42,7 @@ app.put('/list/:name/item/:itemname', function(req, res){
   } 
 });
 
-app.delete('/list/:name/item/:itemname', function(req, res){
+app.delete('/api/v1/list/:name/item/:itemname', function(req, res){
   if (typeof(lists[req.params.name]) == "object"){
 	  if (lists[req.params.name].items.lastIndexOf(req.params.itemname) == -1){
 		res.json({status:404});
