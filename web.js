@@ -5,7 +5,7 @@ var lists = {"cestil":{"items":["cane","gatto","pollo"]}};
 
 app.get('/api/v1/list/:name', function(req, res){
   if (typeof(lists[req.params.name]) == "object"){
-	res.json({status:200,data:{items:lists[req.params.name]}});
+	res.json({status:200,data:{items:lists[req.params.name].items}});
   } else {
   	res.json({status:404});
   } 
