@@ -1,11 +1,11 @@
 {
-  "name": "tofy",
+  "name": "toFy",
   "version": "0.0.1",
   "main": "web.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "author": "Jurgo Boemo and Paolo Burelli",
   "license": "ISC",
   "dependencies": {
     "express": "^4.6.1",
@@ -23,5 +23,6 @@
   "bugs": {
     "url": "https://github.com/paoloburelli/ToFy/issues"
   },
-  "homepage": "https://github.com/paoloburelli/ToFy"
+  "homepage": "https://github.com/paoloburelli/ToFy",
+  "description": "Todo/shopping list RESTful server developed in Node.js on Heroku. The server offers a set of REST api for other clients to connect and edit the lists."
 }
