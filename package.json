@@ -9,7 +9,6 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.6.1",
-    "jsonfile": "^1.2.0",
     "logfmt": "^1.1.2",
     "redis": "^0.11.0"
   },
