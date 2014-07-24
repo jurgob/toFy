@@ -21,6 +21,7 @@ var status = {
 	"preconditionFailed":412
 }
 
+var openConnections = {};
 
 function logRequest(req) {
 	console.log(new Date().toString()+", "+req.ip+", "+req.method+", "+req.path);
@@ -87,6 +88,40 @@ function checkPassword(list,req){
 		return list.password === password;
 }
 
+function registerClient(req,res,list) {
+	if (typeof openConnections[req.params.name] === "undefined")
+		openConnections[req.params.name] = [];
+	
+	openConnections[req.params.name].push(res);
+	console.log("Registered: "+req.ip+" on "+req.params.name+" ["+openConnections[req.params.name].length+"]");
+	notifyClients(req.params.name,{"items":list.items});
+}
+
+function unregisterClient(req,res){
+	var toRemove;
+	var queue = openConnections[req.params.name];
+        for (var j =0 ; j < queue.length ; j++) {
+            if (queue[j] == res) {
+                toRemove =j;
+               	break;
+            }
+        }
+        openConnections[req.params.name].splice(j,1);
+	if (openConnections[req.params.name].length === 0)
+		delete(openConnections[req.params.name]);
+	console.log("Unregistered : "+req.ip+" on "+req.params.name)
+}
+
+function notifyClients(listName,message){
+    var queue = openConnections[listName];
+    if (typeof queue != "undefined")
+	queue.forEach(function(resp) {
+        	var d = new Date();
+        	resp.write('id: ' + d.getMilliseconds() + '\n');
+		resp.write('data:' + JSON.stringify(message) +   '\n\n'); // Note the extra newline
+    	});
+}
+
 app.all('*', function(req, res, next){
 	logRequest(req);
 	next();	
@@ -108,6 +143,31 @@ app.put('/api/v1/list/:name/password', function(req, res){
 
   });
 });
+
+app.get('/api/v1/list/:name/updates', function(req, res){
+	getList(req.params.name, function(list) {
+		if (list != null){
+			if (checkPassword(list,req)){
+				req.socket.setTimeout(Infinity);
+				res.writeHead(200, {
+        				'Content-Type': 'text/event-stream',
+        				'Cache-Control': 'no-cache',
+        				'Connection': 'keep-alive'
+    				});
+    				res.write('\n');
+				
+				registerClient(req,res,list);
+
+				req.on("close", function() {
+    					unregisterClient(req,res);
+				});
+			}
+			else res.json(r(status.unauthorized));
+  		} 
+		else res.json(r(status.notFound));
+  	}); 
+})
+
 
 app.route('/api/v1/list/:name')
 .get(function(req, res){
@@ -151,6 +211,7 @@ app.route('/api/v1/list/:name/item/:itemname')
 					list.items.push(req.params.itemname);		
 					setList(req.params.name,list);
 					res.json(r(status.ok,{"items":list.items}));
+					notifyClients(req.params.name,{"items":list.items});
   	  			} 
 				else res.json(r(status.conflict));
 			} 
@@ -168,6 +229,7 @@ app.route('/api/v1/list/:name/item/:itemname')
 					list.items.splice(idx,1);
 					setList(req.params.name,list);
 					res.json(r(status.ok,{"items":list.items}));
+					notifyClients(req.params.name,{"items":list.items});
 	  			} 
 				else res.json(r(status.notFound));
 			} 
@@ -184,7 +246,6 @@ app.get('/', function(req, res){
 app.all('*', function(req, res){
 	res.json(r(status.bad));
 });
-
 
 var port = Number(process.env.PORT || 3000);
 app.listen(port, function() {
