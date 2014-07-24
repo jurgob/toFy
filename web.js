@@ -110,20 +110,22 @@ function registerClient(req,res) {
 function unregisterClient(req,res){
 	var toRemove;
 	var queue = openConnections[req.params.name];
-        for (var j =0 ; j < queue.length ; j++) {
-            if (queue[j] == res) {
-                toRemove =j;
-               	break;
-            }
-        }
+        if (queue != undefined) {
+		for (var j =0 ; j < queue.length ; j++) {
+            		if (queue[j] == res) {
+                		toRemove =j;
+               			break;
+            		}
+        	}
         
-	openConnections[req.params.name].splice(j,1);
-	if (openConnections[req.params.name].length === 0)
-		delete(openConnections[req.params.name]);
+		openConnections[req.params.name].splice(j,1);
+		if (openConnections[req.params.name].length === 0)
+			delete(openConnections[req.params.name]);
 	
-	notifyClients(res,req.params.name,events.unregistered);
+		notifyClients(res,req.params.name,events.unregistered);
 	
-	console.log("Unregistered : "+req.ip+" on "+req.params.name)
+		console.log("Unregistered : "+req.ip+" on "+req.params.name)
+	}
 }
 
 function notifyClients(source,listName,message,data){
