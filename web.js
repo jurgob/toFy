@@ -13,13 +13,13 @@ client.on("error", function (err) {
 });
 
 var status = {
-	"ok":200,
-	"bad":400,
-	"unauthorized":401,
-	"notFound":404,
-	"conflict":409,
-	"preconditionFailed":412,
-	"locked":423
+	ok: 200,
+	bad: 400,
+	unauthorized: 401,
+	notFound: 404,
+	conflict: 409,
+	preconditionFailed: 412,
+	locked: 423
 }
 
 var events = {
@@ -43,7 +43,7 @@ function logResponse(statusCode) {
 
 
 function r(statusCode,data){
-	if (typeof data === "undefined")
+	if (data === undefined)
 		data = {}
 
 	logResponse(statusCode);
@@ -76,7 +76,7 @@ function itemExists(list,itemName) {
 
 function getPassword(req) {
 	b64password = req.get('password');
-	if (typeof b64password != "undefined")
+	if (b64password != undefined)
 		return (new Buffer(b64password, 'base64')).toString();
 	else 
 		return "";
@@ -84,7 +84,7 @@ function getPassword(req) {
 
 function getNewPassword(req) {
 	b64password = req.get('newpassword');
-	if (typeof b64password != "undefined")
+	if (b64password != undefined)
 		return (new Buffer(b64password, 'base64')).toString();
 	else 
 		return "";
@@ -92,14 +92,14 @@ function getNewPassword(req) {
 
 function checkPassword(list,req){
 	password = getPassword(req);
-	if (typeof list.password === "undefined" || list.password === null || list.password === "")
+	if (list.password === undefined || list.password === null || list.password === "")
 		return true;
 	else
 		return list.password === password;
 }
 
 function registerClient(req,res) {
-	if (typeof openConnections[req.params.name] === "undefined")
+	if (openConnections[req.params.name] === undefined)
 		openConnections[req.params.name] = [];
 	
 	openConnections[req.params.name].push(res);
@@ -129,10 +129,10 @@ function unregisterClient(req,res){
 function notifyClients(source,listName,message,data){
     var queue = openConnections[listName];
 
-    if (typeof data === "undefined")
+    if (data === undefined)
 	data = {};
 
-    if (typeof queue != "undefined" && queue != null)
+    if (queue != undefined && queue != null){
 	var d = new Date();
 	queue.forEach(function(resp) {
         	if (source != resp) {
@@ -142,6 +142,7 @@ function notifyClients(source,listName,message,data){
 			resp.write('data:' + JSON.stringify(data) +   '\n\n'); // Note the extra newline
 		}
     	});
+   }
 }
 
 app.all('*', function(req, res, next){
