@@ -18,7 +18,17 @@ var status = {
 	"unauthorized":401,
 	"notFound":404,
 	"conflict":409,
-	"preconditionFailed":412
+	"preconditionFailed":412,
+	"locked":423
+}
+
+var events = {
+	unregistered:"UNREG",
+	registered:"REG",
+	item_added:"ITEM_ADD",
+	item_deleted:"ITEM_DEL",
+	list_deleted:"LIST_DEL",
+	password_changed:"PW_CHANGE"
 }
 
 var openConnections = {};
@@ -88,13 +98,13 @@ function checkPassword(list,req){
 		return list.password === password;
 }
 
-function registerClient(req,res,list) {
+function registerClient(req,res) {
 	if (typeof openConnections[req.params.name] === "undefined")
 		openConnections[req.params.name] = [];
 	
 	openConnections[req.params.name].push(res);
 	console.log("Registered: "+req.ip+" on "+req.params.name+" ["+openConnections[req.params.name].length+"]");
-	notifyClients(req.params.name,{"items":list.items});
+	notifyClients(res,req.params.name,events.registered);
 }
 
 function unregisterClient(req,res){
@@ -106,19 +116,31 @@ function unregisterClient(req,res){
                	break;
             }
         }
-        openConnections[req.params.name].splice(j,1);
+        
+	openConnections[req.params.name].splice(j,1);
 	if (openConnections[req.params.name].length === 0)
 		delete(openConnections[req.params.name]);
+	
+	notifyClients(res,req.params.name,events.unregistered);
+	
 	console.log("Unregistered : "+req.ip+" on "+req.params.name)
 }
 
-function notifyClients(listName,message){
+function notifyClients(source,listName,message,data){
     var queue = openConnections[listName];
-    if (typeof queue != "undefined")
+
+    if (typeof data === "undefined")
+	data = {};
+
+    if (typeof queue != "undefined" && queue != null)
+	var d = new Date();
 	queue.forEach(function(resp) {
-        	var d = new Date();
-        	resp.write('id: ' + d.getMilliseconds() + '\n');
-		resp.write('data:' + JSON.stringify(message) +   '\n\n'); // Note the extra newline
+        	if (source != resp) {
+			resp.write('id: ' + d.getMilliseconds() + '\n');
+			resp.write('list: ' + listName + '\n');
+			resp.write('event: '+ message + '\n');
+			resp.write('data:' + JSON.stringify(data) +   '\n\n'); // Note the extra newline
+		}
     	});
 }
 
@@ -135,6 +157,7 @@ app.put('/api/v1/list/:name/password', function(req, res){
 		if (checkPassword(list,req)){
 			list.password =  getNewPassword(req);
 			setList(req.params.name,list);
+			notifyClients(res,req.params.name,events.password_changed);
 			res.json(r(status.ok));
 		} 
 		else res.json(r(status.unauthorized));
@@ -156,7 +179,7 @@ app.get('/api/v1/list/:name/updates', function(req, res){
     				});
     				res.write('\n');
 				
-				registerClient(req,res,list);
+				registerClient(req,res);
 
 				req.on("close", function() {
     					unregisterClient(req,res);
@@ -184,7 +207,9 @@ app.route('/api/v1/list/:name')
 	getList(req.params.name, function(list) {
  		if (list != null){
 			if (checkPassword(list,req)){
-				deleteList(req.params.name);		
+				deleteList(req.params.name);
+				notifyClients(res,req.params.name,events.list_deleted);
+				delete(openConnections[req.params.name]);	
 				res.json(r(status.ok));
 			} 
 			else res.json(r(status.unauthorized));
@@ -210,8 +235,8 @@ app.route('/api/v1/list/:name/item/:itemname')
 	  			if (!itemExists(list,req.params.itemname)){
 					list.items.push(req.params.itemname);		
 					setList(req.params.name,list);
+					notifyClients(res,req.params.name,events.item_added,{"item":req.params.itemname});
 					res.json(r(status.ok,{"items":list.items}));
-					notifyClients(req.params.name,{"items":list.items});
   	  			} 
 				else res.json(r(status.conflict));
 			} 
@@ -228,8 +253,8 @@ app.route('/api/v1/list/:name/item/:itemname')
   					var idx = list.items.lastIndexOf(req.params.itemname);
 					list.items.splice(idx,1);
 					setList(req.params.name,list);
+					notifyClients(res,req.params.name,events.item_deleted,{"item":req.params.itemname});
 					res.json(r(status.ok,{"items":list.items}));
-					notifyClients(req.params.name,{"items":list.items});
 	  			} 
 				else res.json(r(status.notFound));
 			} 
