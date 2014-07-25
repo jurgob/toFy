@@ -33,7 +33,7 @@ The server offers a set of REST api for other clients to connect and edit the li
     * Events structure:
         * id: *unique time-based message id*
         * event: *UNREG|REG|ITEM_ADD|ITEM_DEL|LIST_DEL|PW_CHANGE*
-        * data: *Json object containing info about the event (e.g. {"list":"listname","item":"itemdeletedname"}). The list field is always included*
+        * data: *Json object containing info about the event (e.g. {list:"listname",item:"itemdeletedname"}). The list field is always included*
 
 * **Add an item to a list:** HTTP PUT list/[listname]/item/[itemname]
     * Header parameters: *password (base64)*
