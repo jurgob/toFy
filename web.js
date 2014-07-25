@@ -42,12 +42,12 @@ function logResponse(statusCode) {
 }
 
 
-function r(statusCode,data){
-	if (data === undefined)
-		data = {}
-
+function r(statusCode,listName,list){
+	var data = {};
 	logResponse(statusCode);
-	return {"status":statusCode,"data":data};
+	if (listName != undefined && list != undefined)
+		return {"status":statusCode,"data":{"list":listName,"items":list.items}};
+	else return {"status":statusCode};
 }
 
 function getList(listName,callback){
@@ -134,12 +134,14 @@ function notifyClients(source,listName,message,data){
     if (data === undefined)
 	data = {};
 
+    data["list"] = listName;
+
     if (queue != undefined && queue != null){
 	var d = new Date();
 	queue.forEach(function(resp) {
         	if (source != resp) {
 			resp.write('id: ' + d.getMilliseconds() + '\n');
-			resp.write('list: ' + listName + '\n');
+			//resp.write('list: ' + listName + '\n');
 			resp.write('event: '+ message + '\n');
 			resp.write('data:' + JSON.stringify(data) +   '\n\n'); // Note the extra newline
 		}
@@ -206,7 +208,7 @@ app.route('/api/v1/list/:name')
 	getList(req.params.name, function(list) {
 		if (list != null){
 			if (checkPassword(list,req))
-				res.json(r(status.ok,{"items":list.items}));
+				res.json(r(status.ok,req.params.name,list));
 			else res.json(r(status.unauthorized));
   		} 
 		else res.json(r(status.notFound));
@@ -245,7 +247,7 @@ app.route('/api/v1/list/:name/item/:itemname')
 					list.items.push(req.params.itemname);		
 					setList(req.params.name,list);
 					notifyClients(res,req.params.name,events.item_added,{"item":req.params.itemname});
-					res.json(r(status.ok,{"items":list.items}));
+					res.json(r(status.ok,req.params.name,list));
   	  			} 
 				else res.json(r(status.conflict));
 			} 
@@ -263,7 +265,7 @@ app.route('/api/v1/list/:name/item/:itemname')
 					list.items.splice(idx,1);
 					setList(req.params.name,list);
 					notifyClients(res,req.params.name,events.item_deleted,{"item":req.params.itemname});
-					res.json(r(status.ok,{"items":list.items}));
+					res.json(r(status.ok,req.params.name,list));
 	  			} 
 				else res.json(r(status.notFound));
 			} 
