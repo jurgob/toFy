@@ -12,15 +12,6 @@ client.on("error", function (err) {
         console.log("Redis: "+err);
 });
 
-var allowCrossDomain = function(req, res, next) {
-    res.header('Access-Control-Allow-Origin', '*');
-    res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
-    res.header('Access-Control-Allow-Headers', 'password');
-    res.header('Access-Control-Allow-Headers', 'Content-Type');
-
-    next();
-}
-
 var status = {
 	ok: 200,
 	bad: 400,
@@ -158,6 +149,13 @@ function notifyClients(source,listName,message,data){
 
 app.all('*', function(req, res, next){
 	logRequest(req);
+	
+	//Allow cross domain access
+	res.header('Access-Control-Allow-Origin', '*');
+    	res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+    	res.header('Access-Control-Allow-Headers', 'password');
+   	res.header('Access-Control-Allow-Headers', 'Content-Type');
+
 	next();	
 });
 
@@ -284,7 +282,6 @@ app.all('*', function(req, res){
 	res.json(r(status.bad));
 });
 
-app.use(allowCrossDomain);
 
 var port = Number(process.env.PORT || 3000);
 app.listen(port, function() {
