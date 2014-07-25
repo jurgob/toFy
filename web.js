@@ -153,8 +153,7 @@ app.all('*', function(req, res, next){
 	//Allow cross domain access
 	res.header('Access-Control-Allow-Origin', '*');
     	res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
-    	res.header('Access-Control-Allow-Headers', 'password');
-   	res.header('Access-Control-Allow-Headers', 'Content-Type');
+    	res.header('Access-Control-Allow-Headers', 'Content-Type,password');
 
 	next();	
 });
