@@ -14,7 +14,7 @@ The server offers a set of REST api for other clients to connect and edit the li
 
 * **Get List:** HTTP GET list/[listname]
     * Header parameters: *password (base64)*
-    * Return: *{status:200|400|401|404, data:{list_name:"listname",items:["item","item"...]}}*
+    * Return: *{status:200|400|401|404, data:{list_name:"listname",list_items:["item","item"...]}}*
     * Description: *Gets a list from the server. A password is required if the list has a password.*
     
 * **Remove List:** HTTP DELETE list/[listname]
@@ -33,16 +33,16 @@ The server offers a set of REST api for other clients to connect and edit the li
     * Events structure:
         * id: *unique time-based message id*
         * event: *UNREG|REG|ITEM_ADD|ITEM_DEL|LIST_DEL|PW_CHANGE*
-        * data: *Json object containing info about the event (e.g. {list_name:"listname",item:"itemdeletedname"}). The list field is always included*
+        * data: *Json object containing info about the event (e.g. {list_name:"listname"...}). The list field is always included*
 
 * **Add an item to a list:** HTTP PUT list/[listname]/item/[itemname]
     * Header parameters: *password (base64)*
-    * Return: *{status:200|400|401|409|412, data:{list_name:"listname",items:["item","item"...]}}*
+    * Return: *{status:200|400|401|409|412, data:{list_name:"listname",list_items:["item","item"...]}}*
     * Description: *Adds an item to a list. A password is required if the list has a password.*
 
 * **Remove an item from a list:** HTTP DELETE list/[listname]/item/[itemname]
     * Header parameters: *password (base64)*
-    * Return: *{status:200|400|401|404|412, data:{list_name:"listname",items:["item","item"...]}}*
+    * Return: *{status:200|400|401|404|412, data:{list_name:"listname",list_items:["item","item"...]}}*
     * Description: *Removes an item from a list. A password is required if the list has a password.*
 
 
@@ -59,8 +59,8 @@ The return codes mimic the HTTP protocol return codes:
 ## Events
 * **UNREG**: Another client stopped receiving events from the list.
 * **REG**: Another client started receiving events from the list.
-* **ITEM_ADD**: An item has been added to the list. The data field contains variable named "item" with the name of the item.
-* **ITEM_DEL**: An item has been removed from the list. The data field contains variable named "item" with the name of the item.
+* **ITEM_ADD**: An item has been added to the list. The data field contains a variable named "item_added" with the name of the item.
+* **ITEM_DEL**: An item has been removed from the list. The data field contains a variable named "item_deleted" with the name of the item.
 * **LIST_DEL**: The list has been deleted.
 * **PW_CHANGE**: The password has been changed on this list.
 
