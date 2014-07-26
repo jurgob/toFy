@@ -247,7 +247,7 @@ app.route('/api/v1/list/:name/item/:itemname')
 			if (checkPassword(list,req)){
 	  			if (!itemExists(list,req.params.itemname)){
 					list.items.push(req.params.itemname);		
-					setList(req.params.name,list);
+					setList(list.name,list.password,list.items);
 					notifyClients(res,req.params.name,events.item_added,{"item_added":req.params.itemname});
 					res.json(r(status.ok,list));
   	  			} 
@@ -265,7 +265,7 @@ app.route('/api/v1/list/:name/item/:itemname')
 	  			if (itemExists(list,req.params.itemname)){
   					var idx = list.items.lastIndexOf(req.params.itemname);
 					list.items.splice(idx,1);
-					setList(req.params.name,list);
+					setList(list.name,list.password,list.items);
 					notifyClients(res,req.params.name,events.item_deleted,{"item_deleted":req.params.itemname});
 					res.json(r(status.ok,list));
 	  			} 
