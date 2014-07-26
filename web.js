@@ -46,7 +46,7 @@ function r(statusCode,list){
 	var data = {};
 	logResponse(statusCode);
 	if (list != undefined)
-		return {"status":statusCode,"data":{"name":list.name,"items":list.items}};
+		return {"status":statusCode,"data":{"list_name":list.name,"list_items":list.items}};
 	else return {"status":statusCode};
 }
 
@@ -137,7 +137,7 @@ function notifyClients(source,listName,message,data){
     if (data === undefined)
 	data = {};
 
-    data["name"] = listName;
+    data["list_name"] = listName;
 
     if (queue != undefined && queue != null){
 	var d = new Date();
@@ -248,7 +248,7 @@ app.route('/api/v1/list/:name/item/:itemname')
 	  			if (!itemExists(list,req.params.itemname)){
 					list.items.push(req.params.itemname);		
 					setList(req.params.name,list);
-					notifyClients(res,req.params.name,events.item_added,{"item":req.params.itemname});
+					notifyClients(res,req.params.name,events.item_added,{"item_added":req.params.itemname});
 					res.json(r(status.ok,list));
   	  			} 
 				else res.json(r(status.conflict));
@@ -266,7 +266,7 @@ app.route('/api/v1/list/:name/item/:itemname')
   					var idx = list.items.lastIndexOf(req.params.itemname);
 					list.items.splice(idx,1);
 					setList(req.params.name,list);
-					notifyClients(res,req.params.name,events.item_deleted,{"item":req.params.itemname});
+					notifyClients(res,req.params.name,events.item_deleted,{"item_deleted":req.params.itemname});
 					res.json(r(status.ok,list));
 	  			} 
 				else res.json(r(status.notFound));
