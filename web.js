@@ -64,7 +64,7 @@ function setList(listName,password,items){
 	zlib.deflate(JSON.stringify(list),function (err,buffer) {
 		client.set(listName.toLowerCase(),buffer.toString('base64'));
 	});
-	console.log(list);
+	//console.log(list);
 	return list;
 }
 
@@ -247,7 +247,7 @@ app.route('/api/v1/list/:name/item/:itemname')
 			if (checkPassword(list,req)){
 	  			if (!itemExists(list,req.params.itemname)){
 					list.items.push(req.params.itemname);		
-					setList(list.name,list.password,list.items);
+					setList(req.params.name,list.password,list.items);
 					notifyClients(res,req.params.name,events.item_added,{"item_added":req.params.itemname});
 					res.json(r(status.ok,list));
   	  			} 
