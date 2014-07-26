@@ -42,16 +42,16 @@ function logResponse(statusCode) {
 }
 
 
-function r(statusCode,listName,list){
+function r(statusCode,list){
 	var data = {};
 	logResponse(statusCode);
-	if (listName != undefined && list != undefined)
-		return {"status":statusCode,"data":{"list":listName,"items":list.items}};
+	if (list != undefined)
+		return {"status":statusCode,"data":{"name":list.name,"items":list.items}};
 	else return {"status":statusCode};
 }
 
 function getList(listName,callback){
-	client.get(listName, function (err,reply){
+	client.get(listName.toLowerCase(), function (err,reply){
 		if (reply != null){
 			zlib.inflate(new Buffer(reply.toString(), 'base64'),function (err,output){	callback(JSON.parse(output.toString('utf8')));	});
 		} else
@@ -59,10 +59,13 @@ function getList(listName,callback){
 	});
 }
 
-function setList(listName,list){
+function setList(listName,password,items){
+	list = {"name":listName,"password":password,"items":items};
 	zlib.deflate(JSON.stringify(list),function (err,buffer) {
-		client.set(listName,buffer.toString('base64'));
+		client.set(listName.toLowerCase(),buffer.toString('base64'));
 	});
+	console.log(list);
+	return list;
 }
 
 function deleteList(listName) {
@@ -134,7 +137,7 @@ function notifyClients(source,listName,message,data){
     if (data === undefined)
 	data = {};
 
-    data["list"] = listName;
+    data["name"] = listName;
 
     if (queue != undefined && queue != null){
 	var d = new Date();
@@ -163,7 +166,6 @@ app.all('*', function(req, res, next){
 
 app.put('/api/v1/list/:name/password', function(req, res){
   getList(req.params.name, function(list) {
-
   	if (list != null){
 		if (checkPassword(list,req)){
 			list.password =  getNewPassword(req);
@@ -208,7 +210,7 @@ app.route('/api/v1/list/:name')
 	getList(req.params.name, function(list) {
 		if (list != null){
 			if (checkPassword(list,req))
-				res.json(r(status.ok,req.params.name,list));
+				res.json(r(status.ok,list));
 			else res.json(r(status.unauthorized));
   		} 
 		else res.json(r(status.notFound));
@@ -231,8 +233,8 @@ app.route('/api/v1/list/:name')
 .put(function(req, res){
 	getList(req.params.name, function(list) {
 		if (list === null){
-			setList(req.params.name,{"items":[],"password":getPassword(req)}); 
-			res.json(r(status.ok));
+			list = setList(req.params.name,getPassword(req),[]); 
+			res.json(r(status.ok,list));
   		} 
 		else res.json(r(status.conflict));
   	}); 
@@ -247,7 +249,7 @@ app.route('/api/v1/list/:name/item/:itemname')
 					list.items.push(req.params.itemname);		
 					setList(req.params.name,list);
 					notifyClients(res,req.params.name,events.item_added,{"item":req.params.itemname});
-					res.json(r(status.ok,req.params.name,list));
+					res.json(r(status.ok,list));
   	  			} 
 				else res.json(r(status.conflict));
 			} 
@@ -265,7 +267,7 @@ app.route('/api/v1/list/:name/item/:itemname')
 					list.items.splice(idx,1);
 					setList(req.params.name,list);
 					notifyClients(res,req.params.name,events.item_deleted,{"item":req.params.itemname});
-					res.json(r(status.ok,req.params.name,list));
+					res.json(r(status.ok,list));
 	  			} 
 				else res.json(r(status.notFound));
 			} 
