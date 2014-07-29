@@ -36,10 +36,10 @@ var events = {
 var openConnections = {};
 
 //Clean all the keys
-//client.keys("*", function(err, key) {
-//  client.del(key, function(err) {
-//  });
-//});
+client.keys("*", function(err, key) {
+  client.del(key, function(err) {
+  });
+});
 
 function logRequest(req) {
 	console.log(new Date().toString()+", "+req.ip+", "+req.method+", "+req.path);
@@ -77,7 +77,7 @@ function setList(listName,password,items){
 }
 
 function deleteList(listName) {
-	client.del(listName);
+	client.del(listName.toLowerCase());
 }
 
 
@@ -108,6 +108,7 @@ function getPassword(req) {
 
 function getNewPassword(req) {
 	b64password = req.get('newpassword');
+	//console.log(b64password);
 	if (b64password != undefined)
 		return (new Buffer(b64password, 'base64')).toString();
 	else 
@@ -116,6 +117,7 @@ function getNewPassword(req) {
 
 function checkPassword(list,req){
 	password = getPassword(req);
+	//console.log(password + ":" + list.password);
 	if (list.password === undefined || list.password === null || list.password === "")
 		return true;
 	else
@@ -190,7 +192,8 @@ app.put('/api/v1/list/:name/password', function(req, res){
   	if (list != null){
 		if (checkPassword(list,req)){
 			list.password =  getNewPassword(req);
-			setList(req.params.name,list);
+			//console.log("np: "+list.password)
+			setList(list.name,list.password,list.items);
 			notifyClients(res,req.params.name,events.password_changed);
 			res.json(r(status.ok));
 		} 
@@ -230,11 +233,14 @@ app.route('/api/v1/list/:name')
 .get(function(req, res){
 	getList(req.params.name, function(list) {
 		if (list != null){
+			//console.log(list);
+
 			if (checkPassword(list,req))
 				res.json(r(status.ok,list));
-			else res.json(r(status.unauthorized));
-  		} 
-		else res.json(r(status.notFound));
+			else {
+				res.json(r(status.unauthorized));
+			} 
+		} else res.json(r(status.notFound));
   	}); 
 })
 .delete(function(req, res){
