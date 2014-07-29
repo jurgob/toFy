@@ -273,9 +273,10 @@ app.route('/api/v1/list/:name/item/:itemname')
 		if (list != null){
 			if (checkPassword(list,req)){
 	  			if (!itemExists(list,req.params.itemname)){
-					list.items.push({"name":req.params.itemname,"checked":false});		
+					var itm = {"name":req.params.itemname,"checked":false};
+					list.items.push(itm);		
 					setList(req.params.name,list.password,list.items);
-					notifyClients(res,req.params.name,events.item_added,{"item":req.params.itemname});
+					notifyClients(res,req.params.name,events.item_added,{"items":[itm]});
 					res.json(r(status.ok,list));
   	  			} 
 				else res.json(r(status.conflict));
@@ -291,9 +292,10 @@ app.route('/api/v1/list/:name/item/:itemname')
 			if (checkPassword(list,req)){
 	  			if (itemExists(list,req.params.itemname)){
   					var idx = itemIndex(list,req.params.itemname);
+					itm = list.items[idx];
 					list.items.splice(idx,1);
 					setList(list.name,list.password,list.items);
-					notifyClients(res,req.params.name,events.item_deleted,{"item":req.params.itemname});
+					notifyClients(res,req.params.name,events.item_deleted,{"items":[itm]});
 					res.json(r(status.ok,list));
 	  			} 
 				else res.json(r(status.notFound));
@@ -304,6 +306,23 @@ app.route('/api/v1/list/:name/item/:itemname')
 	});
 });
 
+app.delete('/api/v1/list/:name/allitems',function(req, res){
+	getList(req.params.name, function(list) {
+		if (list != null){
+			if (checkPassword(list,req)){
+				old_items = list.items;
+	  			list.items = [];
+				setList(list.name,list.password,list.items);
+				notifyClients(res,req.params.name,events.item_deleted,{"items":old_items});
+				res.json(r(status.ok,list));
+			} 
+			else res.json(r(status.unauthorized));
+  		} 
+		else res.json(r(status.preconditionFailed));
+	});
+});
+
+
 app.route('/api/v1/list/:name/item/:itemname/checkmark') 
 .put(function(req, res){
 	getList(req.params.name, function(list) {
@@ -313,7 +332,7 @@ app.route('/api/v1/list/:name/item/:itemname/checkmark')
 					var idx = itemIndex(list,req.params.itemname);
 					list.items[idx].checked = true;
 					setList(req.params.name,list.password,list.items);
-					notifyClients(res,req.params.name,events.item_checked,{"item":req.params.itemname});
+					notifyClients(res,req.params.name,events.item_checked,{"items":[list.items[idx]]});
 					res.json(r(status.ok,list));
   	  			} 
 				else res.json(r(status.notFound));
@@ -331,7 +350,7 @@ app.route('/api/v1/list/:name/item/:itemname/checkmark')
   					var idx = itemIndex(list,req.params.itemname);
 					list.items[idx].checked = false;
 					setList(list.name,list.password,list.items);
-					notifyClients(res,req.params.name,events.item_unchecked,{"item":req.params.itemname});
+					notifyClients(res,req.params.name,events.item_unchecked,{"items":[list.items[idx]]});
 					res.json(r(status.ok,list));
 	  			} 
 				else res.json(r(status.notFound));
