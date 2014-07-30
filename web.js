@@ -36,10 +36,10 @@ var events = {
 var openConnections = {};
 
 //Clean all the keys
-client.keys("*", function(err, key) {
-  client.del(key, function(err) {
-  });
-});
+//client.keys("*", function(err, key) {
+//  client.del(key, function(err) {
+//  });
+//});
 
 function logRequest(req) {
 	console.log(new Date().toString()+", "+req.ip+", "+req.method+", "+req.path);
