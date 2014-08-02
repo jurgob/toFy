@@ -2,6 +2,7 @@ var express = require('express');
 var app = express();
 var util = require('util');
 var zlib = require('zlib');
+var apn = require('apn');
 
 var redis = require('redis');
 var url = require('url');
@@ -40,6 +41,19 @@ var openConnections = {};
 //  client.del(key, function(err) {
 //  });
 //});
+
+var options = {passphrase:"waterstr",cert:process.env.CERT,key:process.env.KEY};
+var apnConnection = new apn.Connection(options);
+var iphone = new apn.Device("688bc03a 8c33e8ea 77b360e7 2db0390a 231d177b c4f4c37e 4430c7a2 8f64dcbb");
+var note = new apn.Notification();
+note.expiry = Math.floor(Date.now() / 1000) + 3600; // Expires 1 hour from now.
+note.badge = 1;
+note.sound = "ping.aiff";
+note.alert = "Milk added on list Spesa Burelli";
+note.payload = {'messageFrom': 'Rosalba'};
+apnConnection.pushNotification(note, iphone);
+
+
 
 function logRequest(req) {
 	console.log(new Date().toString()+", "+req.ip+", "+req.method+", "+req.path);
