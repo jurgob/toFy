@@ -9,6 +9,7 @@
   "license": "ISC",
   "dependencies": {
     "apn": "^1.6.0",
+    "body-parser": "^1.5.2",
     "express": "^4.6.1",
     "logfmt": "^1.1.2",
     "redis": "^0.11.0"

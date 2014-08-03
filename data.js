@@ -47,6 +47,12 @@ module.exports.List.prototype = {
 				return true;
 		}
 		return false;
+	},
+	CheckPassword : function(password) {
+		if (this.password == null || this.password == undefined || this.password == "")
+			return true;
+		else
+			return this.password === password;
 	}
 }
 
