@@ -94,9 +94,7 @@ var port = Number(process.env.PORT || 3000);
 var httpServer = http.createServer(app);
 
 var portssl = Number(process.env.PORT || 3333);
-var privateKey  = fs.readFileSync('server.key', 'utf8');
-var certificate = fs.readFileSync('server.crt', 'utf8');
-var credentials = {key: privateKey, cert: certificate};
+var credentials = {key: process.env.SSL_KEY, cert: process.env.SSL_CERT};
 var httpsServer = https.createServer(credentials, app);
 
 
