@@ -5,10 +5,7 @@ var fs = require('fs');
 var app = express();
 var bodyParser  = require('body-parser');
 var util = require('util');
-var data = require('./data.js');
-var sse = require('./sse.js');
-var communication = require('./communication.js');
-
+var control = require('./control.js');
 app.use(bodyParser.json());
 
 app.all('*', function(req, res, next){
@@ -19,89 +16,75 @@ app.all('*', function(req, res, next){
 	next();	
 });
 
-
-function listExists(req,res,callback) {
-	data.List.Download(req.params.listname, function(list) {
-		if (list != null){
-			callback(req,res,list)
-		} else communication.Response.NotFound(res);
-	});
-}
-
-function listNotExists(req,res,callback) {
-	data.List.Download(req.params.listname, function(list) {
-		if (list == null){
-			callback(req,res,list)
-		} else communication.Response.Conflict(res);
-	});
-}
-
-
-function isAuthorized(req,res,list,callback) {
-	if (list.CheckPassword(communication.Request.GetPassword(req))){
-		callback(req,res,list);
-	} else {
-		communication.Response.WrongPassword(res);
-	}
-}
-
-function itemExists(req,res,list,callback) {
-	if (list.Contains(req.params.itemname)){
-		callback(req,res,list);
-	} else {
-		communication.Response.NotFound(res);
-	}
-}
-
-function itemNotExists(req,res,list,callback) {
-	if (!list.Contains(req.params.itemname)){
-		callback(req,res,list);
-	} else {
-		communication.Response.Conflict(res);
-	}
-}
-
-
-app.route('/api/v1/list/:listname')
-.get(function(req, res){
-	listExists(req,res, function(req,res,list) {
-		isAuthorized(req,res,list, function(req,res,list) {
-			communication.Response.GetOk(res,list);
+app.route('/api/v1/lists')
+.post(function(req, res){
+	control.isValidListPost(req,res,function(req,res) {
+		control.listNotExists(req,res,req.body.name, function(req,res) {	
+			control.performListPost(req,res);
 		});
 	});
 })
-.put(function(req, res){
-	listNotExists(req,res, function(req,res,list) {
-		var its = [];
-		if (req.body.items != undefined)
-			its = req.body.items;
 
-		l = new data.List(req.params.listname,req.body.password,its);
-		l.Upload();
-		communication.Response.PutOk(res);
+
+app.route('/api/v1/lists/:listname')
+.get(function(req, res){
+	control.listExists(req,res, req.params.listname, function(req,res,list) {
+		control.isAuthorized(req,res,list, function(req,res,list) {
+			control.performListGet(req,res,list);
+		});
 	});
 })
 .delete(function(req, res){
-	listExists(req,res, function(req,res,list) {
-		isAuthorized(req,res,list, function(req,res,list) {
-			data.List.Delete(list.name);
-			communication.Response.DelOk(res);
+	control.listExists(req,res, req.params.listname, function(req,res,list) {
+		control.isAuthorized(req,res,list, function(req,res,list) {
+			control.performListDel(req,res,list);
 		});
 	});
 })
 
+app.route('/api/v1/lists/:listname/password')
+.put(function(req,res){
+	control.listExists(req,res, req.params.listname, function(req,res,list) {
+		control.isAuthorized(req,res,list, function(req,res,list) {
+			control.performPasswordChange(req,res,list);
+		});
+	});	
+});
+
+app.route('/api/v1/lists/:listname/items')
+.post(function(req,res){
+	control.listExists(req,res, req.params.listname, function(req,res,list) {
+		control.isAuthorized(req,res,list, function(req,res,list) {
+			control.isValidItemPost(req,res,list,function(req,res,list) {
+				control.itemNotExists(req,res,req.body.name,list,function(req,res,list){
+					control.performItemAdd(req,res,list);
+				});
+			});
+		});
+	});
+});
+
+app.route('/api/v1/lists/:listname/items/:itemname')
+.get(function(req,res){
+	control.listExists(req,res, req.params.listname, function(req,res,list) {
+		control.isAuthorized(req,res,list, function(req,res,list) {
+			control.itemExists(req,res,req.params.itemname,list,function(req,res,list){
+				control.performItemGet(req,res,list);
+			});
+		});
+	});
+	
+})
+
+
 var port = Number(process.env.PORT || 3000);
 var httpServer = http.createServer(app);
-
 var portssl = Number(process.env.PORT || 3333);
 var credentials = {key: process.env.SSL_KEY, cert: process.env.SSL_CERT};
 var httpsServer = https.createServer(credentials, app);
-
-
 httpsServer.listen(portssl, function(){
   console.log("HTTPS server listening on port " + portssl);
 });
-
 httpServer.listen(port, function() {
   console.log("HTTP server istening on port " + port);
 });

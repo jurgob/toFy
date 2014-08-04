@@ -53,12 +53,23 @@ module.exports.List.prototype = {
 			return true;
 		else
 			return this.password === password;
+	},
+	GetIndexFromName : function (name) {
+		for (i in this.items){
+			if (this.items[i].name === name)
+				return i;
+		}
+		return -1;
 	}
 }
 
 module.exports.List.ParseCompressedRecord = function(record,callback){
 	zlib.inflate(new Buffer(record, 'base64'),function (err,output){	
-		obj = JSON.parse(output.toString('utf8'));	
+		obj = JSON.parse(output.toString('utf8'));
+		if (obj.items != undefined && obj.items != null)
+			for (i in obj.items){
+				obj.items[i].__proto__ = module.exports.Item.prototype;
+			}	
 		callback(new module.exports.List(obj.name,obj.password,obj.items));		
 	});
 }
@@ -85,4 +96,3 @@ module.exports.Item.ParseJsonString = function (string) {
 	obj = JSON.parse(output.toString('utf8'));
 	return new Item(obj.name,obj.checkmark,obj.last_author);
 }
-

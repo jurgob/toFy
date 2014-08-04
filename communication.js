@@ -3,7 +3,7 @@ module.exports = {
 		GetOk : function (res,list) {
 			res.json(200,list.ToJsonString());
 		},
-		PutOk : function (res,list) {
+		Created : function (res,list) {
 			res.send(201);
 		},
 		DelOk : function (res,list) {
