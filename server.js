@@ -75,6 +75,24 @@ app.route('/api/v1/lists/:listname/items/:itemname')
 	});
 	
 })
+.delete(function(req,res){
+	control.listExists(req,res, req.params.listname, function(req,res,list) {
+		control.isAuthorized(req,res,list, function(req,res,list) {
+			control.itemExists(req,res,req.params.itemname,list,function(req,res,list){
+				control.performItemDel(req,res,list);
+			});
+		});
+	});
+})
+.patch(function(req,res){
+	control.listExists(req,res, req.params.listname, function(req,res,list) {
+		control.isAuthorized(req,res,list, function(req,res,list) {
+			control.itemExists(req,res,req.params.itemname,list,function(req,res,list){
+				control.performItemChange(req,res,list);
+			});
+		});
+	});
+});
 
 
 var port = Number(process.env.PORT || 3000);

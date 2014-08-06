@@ -36,6 +36,9 @@ module.exports = {
 				return b64.split(":")[1];
 			}else 
 				return "";
+		},
+		GetAuthor : function(req) {
+			return req.get("Author");
 		}
 	}
 }

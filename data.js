@@ -69,8 +69,9 @@ module.exports.List.ParseCompressedRecord = function(record,callback){
 		if (obj.items != undefined && obj.items != null)
 			for (i in obj.items){
 				obj.items[i].__proto__ = module.exports.Item.prototype;
-			}	
-		callback(new module.exports.List(obj.name,obj.password,obj.items));		
+			}
+		obj.__proto__ = module.exports.List.prototype;	
+		callback(obj);		
 	});
 }
 
