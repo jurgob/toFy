@@ -1,6 +1,16 @@
 var data = require('./data.js');
 var communication = require('./communication.js');
+var sse = require('./sse.js');
 var bodyParser  = require('body-parser');
+
+function notifyObservers(req,res,list,event,item_name) {
+		list.GetObservers().forEach(function(observer) {
+			if ((observer.IsDevice() && communication.Request.GetDeviceId(req) != observer.deviceId) || (observer.IsBrowser() && res != observer.connection)){
+				sse.notify(observer,event,list.name,item_name,communication.Request.GetAuthor(req));	
+			}
+		});
+	}
+
 
 module.exports = {
 	listExists: function (req,res,listName,callback) {
@@ -38,6 +48,35 @@ module.exports = {
 			communication.Response.Conflict(res);
 		}
 	},
+	deviceExists: function(req,res,deviceId,list,callback) {
+		for (index in list.GetObservers()) {
+			if (list.GetObservers()[index].deviceId === deviceId){
+				callback(req,res,deviceId,list);
+				return;
+			}
+		}
+		communication.Response.NotFound(res);
+	},
+	deviceNotExists: function(req,res,deviceId,list,callback) {
+		for (index in list.GetObservers()) {
+			if (list.GetObservers()[index].deviceId === deviceId){
+				communication.Response.Created(res);
+				return;
+			}
+		}
+		callback(req,res,deviceId,list);
+	},
+	connectionNotExists: function(req,res,list,callback) {
+		for (index in list.GetObservers()) {
+			if (list.GetObservers()[index].connection === res){
+				communication.Response.GetOk(res);
+				return;
+			}
+		}
+		callback(req,res,list);
+	},
+
+
 	
 	isValidListPost: function (req,res,callback) {
 		if (req.body.name != undefined){
@@ -51,18 +90,19 @@ module.exports = {
 	},
 	isValidItemPost: function (req,res,list,callback) {
 		if (req.body.name != undefined){
-			if (req.body.checkmark == undefined)
-				req.body.checkmark = false;
+			if (req.body.checked == undefined)
+				req.body.checked = false;
 
 			callback(req,res,list);
 		} else {
+			console.log(req.body);
 			communication.Response.WrongObject(res);
 		}
 	},
 	isValidItemChange: function (req,res,list,callback) {
 		if (req.body.name != undefined && list.GetIndexFromName(req.body.name) != -1 ||
 		    (req.body.index != undefined && (req.body.index < 0 || req.body.index >= list.length)) ||
-		    (req.body.checkmark != undefined && req.body.ceckmark != true && req.body.checkmark != false))
+		    (req.body.checked != undefined && req.body.cecked != true && req.body.checked != false))
 			communication.Response.WrongObject(res);
 		else
 			callback(req,res,list);
@@ -80,16 +120,20 @@ module.exports = {
 	performListDel: function (req,res,list) {
 		data.List.Delete(list.name);
 		communication.Response.DelOk(res);
+		notifyObservers(req,res,list,sse.Events.list_deleted,itm.name)
 	},
 	performPasswordChange: function (req,res,list) {
 		list.password = req.body.password;
 		list.Upload();
 		communication.Response.Created(res);
+		notifyObservers(req,res,list,sse.Events.password_changed)
 	},
 	performItemAdd: function (req,res,list) {
-		list.items.push(new data.Item(req.body.name,req.body.checkmark,communication.Request.GetAuthor(req)));
+		var itm = new data.Item(req.body.name,req.body.checked,communication.Request.GetAuthor(req));
+		list.items.push(itm);
 		list.Upload();
 		communication.Response.Created(res);
+		notifyObservers(req,res,list,sse.Events.item_added,itm.name)
 	},
 	performItemGet: function (req,res,list) {
 		var idx = list.GetIndexFromName(req.params.itemname);
@@ -102,6 +146,7 @@ module.exports = {
 		list.items.splice(idx,1);
 		list.Upload();
 		communication.Response.DelOk(res);
+		notifyObservers(req,res,list,sse.Events.item_deleted,itm.name)
 	},
 	performItemChange: function (req,res,list) {
 		var idx = list.GetIndexFromName(req.params.itemname);
@@ -115,8 +160,8 @@ module.exports = {
 			list.items.splice(req.body.index,0,itm);
 		}
 
-		if (req.body.checkmark != undefined){
-			itm.checkmark = req.body.checkmark;
+		if (req.body.checked != undefined){
+			itm.checked = req.body.checked;
 		}
 
 		if (communication.Request.GetAuthor(req) != undefined)
@@ -124,6 +169,42 @@ module.exports = {
 
 		list.Upload();
 		communication.Response.Created(res);
-	}
+		notifyObservers(req,res,list,sse.Events.item_changed,itm.name);
+	},
 
+	registerForServerSentEvents: function(req,res,list) {
+		var obs = new data.Observer(communication.Request.GetAuthor(req),res);
+		list.GetObservers().push(obs);
+		req.socket.setTimeout(Infinity);
+			
+		res.writeHead(200, {'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache','Connection': 'keep-alive'});
+    		res.write('\n');
+				
+		req.on("close", function() {
+			module.exports.unregisterForServerSentEvents(req,res,list,obs);    			
+		});
+
+		notifyObservers(req,res,list,sse.Events.registered);
+	},
+	unregisterForServerSentEvents: function(req,res,list,observer) {
+		idx = list.GetObservers().indexOf(observer);
+		list.GetObservers().splice(idx,1);
+		notifyObservers(req,res,list,sse.Events.unregistered);
+	},
+	registerForApplePushNotifications: function(req,res,deviceid,list) {
+		var obs = new data.Observer(communication.Request.GetAuthor(req),undefined,deviceid);
+		list.GetObservers().push(obs);
+		communication.Response.Created(res);
+		notifyObservers(req,res,list,sse.Events.registered);
+	},
+	unregisterFromApplePushNotifications: function(req,res,deviceId,list) {
+		for (index in list.GetObservers()) {
+			if (list.GetObservers()[index].deviceId === deviceId){
+				list.GetObservers().splice(index,1);
+				communication.Response.DelOk(res);
+				notifyObservers(req,res,list,sse.Events.unregistered);
+				break;
+			}
+		}
+	},
 }

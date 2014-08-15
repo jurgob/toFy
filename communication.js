@@ -1,7 +1,10 @@
 module.exports = {
 	Response : {
 		GetOk : function (res,list) {
-			res.json(200,list.ToJsonString());
+			if (list != undefined)
+				res.json(200,list.ToJsonString());
+			else
+				res.send(200);
 		},
 		Created : function (res,list) {
 			res.send(201);
@@ -38,7 +41,13 @@ module.exports = {
 				return "";
 		},
 		GetAuthor : function(req) {
-			return req.get("Author");
+			var author = req.get("Author");
+			if (author === undefined)
+				author = "Someone";
+			return author; 
+		},
+		GetDeviceId : function(req) {
+			return req.get("Device-Id");
 		}
 	}
 }

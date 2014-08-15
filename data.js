@@ -1,12 +1,19 @@
 var zlib = require('zlib');
 var redis = require('redis');
 var url = require('url');
-var redisURL = url.parse(process.env.REDISCLOUD_URL);
-var client = redis.createClient(redisURL.port, redisURL.hostname, {no_ready_check: true});
-client.auth(redisURL.auth.split(":")[1]);
-client.on("error", function (err) {
-        console.log("Redis: "+err);
-});
+
+//var localMemory = [];
+var localMemory = null;
+var observers = {};
+
+if (localMemory === null) {
+	var redisURL = url.parse(process.env.REDISCLOUD_URL);
+	var client = redis.createClient(redisURL.port, redisURL.hostname, {no_ready_check: true});
+	client.auth(redisURL.auth.split(":")[1]);
+	client.on("error", function (err) {
+        	console.log("Redis: "+err);
+	});
+}
 
 module.exports = {
 	List : function (name, password, items) {
@@ -16,30 +23,54 @@ module.exports = {
 			this.items = [];
 		else
 			this.items = items;
-		this.observers = [];
-		this.devices = [];
 	},
-	Item : function (name, checkmark, last_author){
+	Item : function (name, checked, last_author){
 		this.name = name;
 		this.last_author = last_author;
-		this.checkmark = checkmark;
+		this.checked = checked;
 	},
+	Observer: function (name, connection, deviceId){
+		this.name = name;
+		
+		if (deviceId != undefined)
+			this.deviceId = deviceId;
+		else
+			this.connection = connection;
+	}
+}
+
+module.exports.Observer.prototype = {
+	IsDevice : function () {
+		return this.deviceId != undefined;
+	},
+	IsBrowser : function () {
+		return this.connection != undefined;
+	}
 }
 
 module.exports.List.prototype = { 
 	ToJsonString: function () {
-		return JSON.stringify({"name":this.name,"items":this.items,"observers":this.observers});
+		obs_names = [];
+		//this.GetObservers().foreach(function(observer){ obs_names.push(observer.name);});
+		for (idx in this.GetObservers())
+			obs_names.push(this.GetObservers()[idx].name);
+		
+		return JSON.stringify({"name":this.name,"items":this.items,"observers":obs_names});
 	},
 	ToCompressedRecord: function (callback) {
-		zlib.deflate(JSON.stringify({"name":this.name,"items":this.items,"password":this.password}),function (err,buffer) {
+		zlib.deflate(JSON.stringify(this),function (err,buffer) {
 			callback(buffer.toString('base64'));
 		});
 	},
 	Upload : function(){
-		var thisList = this;
-		this.ToCompressedRecord(function (value) {
-			client.set(thisList.name.toLowerCase(), value);
-		});
+		if (localMemory === null) {
+			var thisList = this;
+			this.ToCompressedRecord(function (value) {
+				client.set(thisList.name.toLowerCase(), value);
+			});
+		} else {
+			localMemory[this.name] = this;
+		}
 	},
 	Contains : function(item_name) {
 		for (i in this.items){
@@ -60,6 +91,12 @@ module.exports.List.prototype = {
 				return i;
 		}
 		return -1;
+	},
+	GetObservers : function() {
+		if (observers[this.name] === undefined)
+			observers[this.name] = [];
+
+		return observers[this.name];
 	}
 }
 
@@ -76,15 +113,26 @@ module.exports.List.ParseCompressedRecord = function(record,callback){
 }
 
 module.exports.List.Download = function(name,callback){
-	client.get(name.toLowerCase(), function (err,reply){
-		if (reply != null)
-			module.exports.List.ParseCompressedRecord(reply.toString(),callback);
-		else callback(null);
-	});
+	if (localMemory === null) {
+		client.get(name.toLowerCase(), function (err,reply){
+			if (reply != null)
+				module.exports.List.ParseCompressedRecord(reply.toString(),callback);
+			else callback(null);
+		});
+	} else {
+		if (localMemory[name.toLowerCase()] != undefined)
+			callback(localMemory[name.toLowerCase()]);
+		else
+			callback(null);
+	}
 }
 
 module.exports.List.Delete = function(name) {
-	client.del(name.toLowerCase());
+	if (localMemory === null)
+		client.del(name.toLowerCase());
+	else {
+		delete(localMemory[name.toLowerCase()]);
+	}	
 }
 
 module.exports.Item.prototype = {
@@ -95,5 +143,5 @@ module.exports.Item.prototype = {
 
 module.exports.Item.ParseJsonString = function (string) {
 	obj = JSON.parse(output.toString('utf8'));
-	return new Item(obj.name,obj.checkmark,obj.last_author);
+	return new Item(obj.name,obj.checked,obj.last_author);
 }

@@ -94,6 +94,38 @@ app.route('/api/v1/lists/:listname/items/:itemname')
 	});
 });
 
+app.route('/api/v1/lists/:listname/sse')
+.get(function(req,res){
+	control.listExists(req,res, req.params.listname, function(req,res,list) {
+		control.isAuthorized(req,res,list, function(req,res,list) {
+			control.connectionNotExists(req,res,list,function(req,res,list) {
+				control.registerForServerSentEvents(req,res,list);
+			});
+		});
+	});	
+});
+
+app.route('/api/v1/lists/:listname/apns/devices/:deviceid')
+.put(function(req,res){
+	control.listExists(req,res, req.params.listname, function(req,res,list) {
+		control.isAuthorized(req,res,list, function(req,res,list) {
+			control.deviceNotExists(req,res,req.params.deviceid,list,function(req,res,deviceId,list) {
+				control.registerForApplePushNotifications(req,res,deviceId,list);
+			});
+		});
+	});	
+})
+.delete(function(req,res){
+	control.listExists(req,res, req.params.listname, function(req,res,list) {
+		control.isAuthorized(req,res,list, function(req,res,list) {
+			control.deviceExists(req,res,req.params.deviceid,list,function(req,res,deviceId,list) {
+				control.unregisterFromApplePushNotifications(req,res,deviceId,list);
+			});
+		});
+	});	
+});
+
+
 
 var port = Number(process.env.PORT || 3000);
 var httpServer = http.createServer(app);
