@@ -129,7 +129,7 @@ app.route('/api/v1/lists/:listname/apns/devices/:deviceid')
 
 var port = Number(process.env.PORT || 3000);
 var httpServer = http.createServer(app);
-var portssl = Number(process.env.PORT || 3333);
+var portssl = Number(process.env.SSLPORT || 3333);
 var credentials = {key: process.env.SSL_KEY, cert: process.env.SSL_CERT};
 var httpsServer = https.createServer(credentials, app);
 httpsServer.listen(portssl, function(){
