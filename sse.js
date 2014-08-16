@@ -1,6 +1,14 @@
 var apn = require('apn');
 
-var options = {production:true,passphrase:process.env.PASS_PHRASE,cert:process.env.APN_CERT,key:process.env.APN_KEY};
+var options = {
+	passphrase:process.env.PASS_PHRASE,
+	cert:process.env.APN_CERT,
+	key:process.env.APN_KEY,
+	errorCallback: function(err,notifcation){
+        	console.log(err + ' :: ' + notifcation);
+    	}
+};
+
 var apnConnection = new apn.Connection(options);
 
 function message(event,list_name,item_name,author) {

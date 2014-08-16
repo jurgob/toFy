@@ -1,0 +1,390 @@
+var express = require('express');
+var app = express();
+var util = require('util');
+var zlib = require('zlib');
+var apn = require('apn');
+
+var redis = require('redis');
+var url = require('url');
+var redisURL = url.parse(process.env.REDISCLOUD_URL);
+var client = redis.createClient(redisURL.port, redisURL.hostname, {no_ready_check: true});
+client.auth(redisURL.auth.split(":")[1]);
+client.on("error", function (err) {
+        console.log("Redis: "+err);
+});
+
+var status = {
+	ok: 200,
+	bad: 400,
+	unauthorized: 401,
+	notFound: 404,
+	conflict: 409,
+	preconditionFailed: 412,
+	locked: 423
+}
+
+var events = {
+	unregistered:"UNREG",
+	registered:"REG",
+	item_added:"ITEM_ADD",
+	item_deleted:"ITEM_DEL",
+	item_checked:"ITEM_CHK",
+	item_unchecked:"ITEM_UNC",
+	list_deleted:"LIST_DEL",
+	password_changed:"PW_CHANGE"
+}
+
+var openConnections = {};
+
+//Clean all the keys
+//client.keys("*", function(err, key) {
+//  client.del(key, function(err) {
+//  });
+//});
+
+var options = {passphrase:"waterstr",cert:process.env.CERT,key:process.env.KEY};
+var apnConnection = new apn.Connection(options);
+var iphone = new apn.Device("688bc03a 8c33e8ea 77b360e7 2db0390a 231d177b c4f4c37e 4430c7a2 8f64dcbb");
+var note = new apn.Notification();
+note.expiry = Math.floor(Date.now() / 1000) + 3600; // Expires 1 hour from now.
+note.badge = 1;
+note.sound = "ping.aiff";
+note.alert = "Milk added on list Spesa Burelli";
+note.payload = {'messageFrom': 'Rosalba'};
+apnConnection.pushNotification(note, iphone);
+
+
+
+function logRequest(req) {
+	console.log(new Date().toString()+", "+req.ip+", "+req.method+", "+req.path);
+}
+
+function logResponse(statusCode) {
+	console.log(statusCode);
+}
+
+
+function r(statusCode,list){
+	var data = {};
+	logResponse(statusCode);
+	if (list != undefined)
+		return {"status":statusCode,"data":{"list_name":list.name,"list_items":list.items}};
+	else return {"status":statusCode};
+}
+
+function getList(listName,callback){
+	client.get(listName.toLowerCase(), function (err,reply){
+		if (reply != null){
+			zlib.inflate(new Buffer(reply.toString(), 'base64'),function (err,output){	callback(JSON.parse(output.toString('utf8')));	});
+		} else
+			callback(null);
+	});
+}
+
+function setList(listName,password,items){
+	list = {"name":listName,"password":password,"items":items};
+	zlib.deflate(JSON.stringify(list),function (err,buffer) {
+		client.set(listName.toLowerCase(),buffer.toString('base64'));
+	});
+	//console.log(list);
+	return list;
+}
+
+function deleteList(listName) {
+	client.del(listName.toLowerCase());
+}
+
+
+function itemExists(list,itemName) {
+	for (i in list.items){
+		if (list.items[i].name === itemName)
+			return true;
+	}
+	return false;
+}
+
+function itemIndex(list,itemName) {
+	for (i in list.items){
+		if (list.items[i].name === itemName)
+			return i;
+		i++;
+	}
+	return -1;
+}
+
+function getPassword(req) {
+	b64password = req.get('password');
+	if (b64password != undefined)
+		return (new Buffer(b64password, 'base64')).toString();
+	else 
+		return "";
+}
+
+function getNewPassword(req) {
+	b64password = req.get('newpassword');
+	//console.log(b64password);
+	if (b64password != undefined)
+		return (new Buffer(b64password, 'base64')).toString();
+	else 
+		return "";
+}
+
+function checkPassword(list,req){
+	password = getPassword(req);
+	//console.log(password + ":" + list.password);
+	if (list.password === undefined || list.password === null || list.password === "")
+		return true;
+	else
+		return list.password === password;
+}
+
+function registerClient(req,res) {
+	if (openConnections[req.params.name] === undefined)
+		openConnections[req.params.name] = [];
+	
+	openConnections[req.params.name].push(res);
+	console.log("Registered: "+req.ip+" on "+req.params.name+" ["+openConnections[req.params.name].length+"]");
+	notifyClients(res,req.params.name,events.registered);
+}
+
+function unregisterClient(req,res){
+	var toRemove;
+	var queue = openConnections[req.params.name];
+        if (queue != undefined) {
+		for (var j =0 ; j < queue.length ; j++) {
+            		if (queue[j] == res) {
+                		toRemove =j;
+               			break;
+            		}
+        	}
+        
+		openConnections[req.params.name].splice(j,1);
+		if (openConnections[req.params.name].length === 0)
+			delete(openConnections[req.params.name]);
+	
+		notifyClients(res,req.params.name,events.unregistered);
+	
+		console.log("Unregistered : "+req.ip+" on "+req.params.name)
+	}
+}
+
+function notifyClients(source,listName,message,data){
+    var queue = openConnections[listName];
+
+    if (data === undefined)
+	data = {};
+
+    data["list_name"] = listName;
+
+    if (queue != undefined && queue != null){
+	var d = new Date();
+	queue.forEach(function(resp) {
+        	if (source != resp) {
+			resp.write('id: ' + d.getMilliseconds() + '\n');
+			//resp.write('list: ' + listName + '\n');
+			resp.write('event: '+ message + '\n');
+			resp.write('data:' + JSON.stringify(data) +   '\n\n'); // Note the extra newline
+		}
+    	});
+   }
+}
+
+app.all('*', function(req, res, next){
+	logRequest(req);
+	
+	//Allow cross domain access
+	res.header('Access-Control-Allow-Origin', '*');
+    	res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
+    	res.header('Access-Control-Allow-Headers', 'X-Requested-With,password,Content-Type');
+
+	next();	
+});
+
+
+app.put('/api/v1/list/:name/password', function(req, res){
+  getList(req.params.name, function(list) {
+  	if (list != null){
+		if (checkPassword(list,req)){
+			list.password =  getNewPassword(req);
+			//console.log("np: "+list.password)
+			setList(list.name,list.password,list.items);
+			notifyClients(res,req.params.name,events.password_changed);
+			res.json(r(status.ok));
+		} 
+		else res.json(r(status.unauthorized));
+  	} 
+  	else res.json(r(status.preconditionFailed));
+
+  });
+});
+
+app.get('/api/v1/list/:name/updates', function(req, res){
+	getList(req.params.name, function(list) {
+		if (list != null){
+			if (checkPassword(list,req)){
+				req.socket.setTimeout(Infinity);
+				res.writeHead(200, {
+        				'Content-Type': 'text/event-stream',
+        				'Cache-Control': 'no-cache',
+        				'Connection': 'keep-alive'
+    				});
+    				res.write('\n');
+				
+				registerClient(req,res);
+
+				req.on("close", function() {
+    					unregisterClient(req,res);
+				});
+			}
+			else res.json(r(status.unauthorized));
+  		} 
+		else res.json(r(status.notFound));
+  	}); 
+})
+
+
+app.route('/api/v1/list/:name')
+.get(function(req, res){
+	getList(req.params.name, function(list) {
+		if (list != null){
+			//console.log(list);
+
+			if (checkPassword(list,req))
+				res.json(r(status.ok,list));
+			else {
+				res.json(r(status.unauthorized));
+			} 
+		} else res.json(r(status.notFound));
+  	}); 
+})
+.delete(function(req, res){
+	getList(req.params.name, function(list) {
+ 		if (list != null){
+			if (checkPassword(list,req)){
+				deleteList(req.params.name);
+				notifyClients(res,req.params.name,events.list_deleted);
+				delete(openConnections[req.params.name]);	
+				res.json(r(status.ok));
+			} 
+			else res.json(r(status.unauthorized));
+  		} 
+		else res.json(r(status.notFound));
+	});
+})
+.put(function(req, res){
+	getList(req.params.name, function(list) {
+		if (list === null){
+			list = setList(req.params.name,getPassword(req),[]); 
+			res.json(r(status.ok,list));
+  		} 
+		else res.json(r(status.conflict));
+  	}); 
+});
+
+app.route('/api/v1/list/:name/item/:itemname') 
+.put(function(req, res){
+	getList(req.params.name, function(list) {
+		if (list != null){
+			if (checkPassword(list,req)){
+	  			if (!itemExists(list,req.params.itemname)){
+					var itm = {"name":req.params.itemname,"checked":false};
+					list.items.push(itm);		
+					setList(req.params.name,list.password,list.items);
+					notifyClients(res,req.params.name,events.item_added,{"items":[itm]});
+					res.json(r(status.ok,list));
+  	  			} 
+				else res.json(r(status.conflict));
+			} 
+			else res.json(r(status.unauthorized));
+  		} 
+		else res.json(r(status.preconditionFailed));
+	});
+})
+.delete(function(req, res){
+	getList(req.params.name, function(list) {
+		if (list != null){
+			if (checkPassword(list,req)){
+	  			if (itemExists(list,req.params.itemname)){
+  					var idx = itemIndex(list,req.params.itemname);
+					itm = list.items[idx];
+					list.items.splice(idx,1);
+					setList(list.name,list.password,list.items);
+					notifyClients(res,req.params.name,events.item_deleted,{"items":[itm]});
+					res.json(r(status.ok,list));
+	  			} 
+				else res.json(r(status.notFound));
+			} 
+			else res.json(r(status.unauthorized));
+  		} 
+		else res.json(r(status.preconditionFailed));
+	});
+});
+
+app.delete('/api/v1/list/:name/allitems',function(req, res){
+	getList(req.params.name, function(list) {
+		if (list != null){
+			if (checkPassword(list,req)){
+				old_items = list.items;
+	  			list.items = [];
+				setList(list.name,list.password,list.items);
+				notifyClients(res,req.params.name,events.item_deleted,{"items":old_items});
+				res.json(r(status.ok,list));
+			} 
+			else res.json(r(status.unauthorized));
+  		} 
+		else res.json(r(status.preconditionFailed));
+	});
+});
+
+
+app.route('/api/v1/list/:name/item/:itemname/checkmark') 
+.put(function(req, res){
+	getList(req.params.name, function(list) {
+		if (list != null){
+			if (checkPassword(list,req)){
+	  			if (itemExists(list,req.params.itemname)){
+					var idx = itemIndex(list,req.params.itemname);
+					list.items[idx].checked = true;
+					setList(req.params.name,list.password,list.items);
+					notifyClients(res,req.params.name,events.item_checked,{"items":[list.items[idx]]});
+					res.json(r(status.ok,list));
+  	  			} 
+				else res.json(r(status.notFound));
+			} 
+			else res.json(r(status.unauthorized));
+  		} 
+		else res.json(r(status.preconditionFailed));
+	});
+})
+.delete(function(req, res){
+	getList(req.params.name, function(list) {
+		if (list != null){
+			if (checkPassword(list,req)){
+	  			if (itemExists(list,req.params.itemname)){
+  					var idx = itemIndex(list,req.params.itemname);
+					list.items[idx].checked = false;
+					setList(list.name,list.password,list.items);
+					notifyClients(res,req.params.name,events.item_unchecked,{"items":[list.items[idx]]});
+					res.json(r(status.ok,list));
+	  			} 
+				else res.json(r(status.notFound));
+			} 
+			else res.json(r(status.unauthorized));
+  		} 
+		else res.json(r(status.preconditionFailed));
+	});
+});
+
+app.get('/', function(req, res){
+  res.sendfile(__dirname + '/index.html');
+});
+
+app.all('*', function(req, res){
+	res.json(r(status.bad));
+});
+
+
+var port = Number(process.env.PORT || 3000);
+app.listen(port, function() {
+  console.log("Listening on " + port);
+});
