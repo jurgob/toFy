@@ -1,9 +1,10 @@
 module.exports = {
 	Response : {
-		GetOk : function (res,list) {
-			if (list != undefined)
-				res.json(200,list.ToJsonString());
-			else
+		GetOk : function (res,content) {
+			if (content != undefined){
+				res.type('json');
+				res.send(200,content.ToJsonString());
+			}else
 				res.send(200);
 		},
 		Created : function (res,list) {

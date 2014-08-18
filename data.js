@@ -55,7 +55,7 @@ module.exports.List.prototype = {
 		for (idx in this.GetObservers())
 			obs_names.push(this.GetObservers()[idx].name);
 		
-		return JSON.stringify({"name":this.name,"items":this.items,"observers":obs_names});
+		return JSON.stringify({'name':this.name,'items':this.items,'observers':obs_names});
 	},
 	ToCompressedRecord: function (callback) {
 		zlib.deflate(JSON.stringify(this),function (err,buffer) {
