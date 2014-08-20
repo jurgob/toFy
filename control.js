@@ -120,7 +120,7 @@ module.exports = {
 	performListDel: function (req,res,list) {
 		data.List.Delete(list.name);
 		communication.Response.DelOk(res);
-		notifyObservers(req,res,list,sse.Events.list_deleted,itm.name)
+		notifyObservers(req,res,list,sse.Events.list_deleted,list.name)
 	},
 	performPasswordChange: function (req,res,list) {
 		list.password = req.body.password;
