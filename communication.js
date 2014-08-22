@@ -36,7 +36,7 @@ module.exports = {
 			auth = req.get('Authorization');
 			console.log(auth);
 			if (auth != undefined){
-				b64 = (new Buffer(auth, 'base64')).toString();
+				b64 = (new Buffer(auth.split(" ")[1], 'base64')).toString();
 			
 				return b64.split(":")[1];
 			}else 
