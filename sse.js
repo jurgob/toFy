@@ -20,8 +20,10 @@ function apnsMessage (event,list_name,item_name,author) {
 	var note = new apn.Notification();
 	note.expiry = Math.floor(Date.now() / 1000) + 3600; // Expires 1 hour from now.
 	if (event != module.exports.Events.item_changed) {
-		note.badge = 1;
-		note.sound = "ping.aiff";
+		if (event !=  module.exports.Events.unregistered && event != module.exports.Events.registered){
+			note.badge = 1;
+			note.sound = "ping.aiff";
+		}
 		note.alert = eventDescription(event,list_name,item_name,author);
 	}
 	note.payload = {"type":event,"list_name":list_name,"item_name":item_name,"author":author};
