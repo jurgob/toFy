@@ -34,7 +34,6 @@ module.exports = {
 	Request :{
 		GetPassword : function (req) {
 			auth = req.get('Authorization');
-			console.log(auth);
 			if (auth != undefined){
 				b64 = (new Buffer(auth.split(" ")[1], 'base64')).toString();
 			
