@@ -74,7 +74,7 @@ module.exports.List.prototype = {
 	},
 	Contains : function(item_name) {
 		for (i in this.items){
-			if (this.items[i].name === item_name)
+			if (this.items[i].name.toLowerCase() === item_name.toLowerCase())
 				return true;
 		}
 		return false;
