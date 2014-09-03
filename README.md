@@ -76,15 +76,15 @@ The server offers a set of REST api for other clients to connect and edit the li
 
 **Server Sent Events**
 
-message:{
+event:{
     
-    event: UNREGISTER|REGISTER|ITEM\_ADD|ITEM\_DELTE|ITEM\_CHANGE|LIST\_DELETE|PW\_CHANGE,
+type: UNREGISTER|REGISTER|ITEM\_ADD|ITEM\_DELTE|ITEM\_CHANGE|LIST\_DELETE|PW\_CHANGE,
     
-    list\_name:string,
+list\_name:string,
     
-    item\_name:string,
+item\_name:string,
     
-    author:string
+author:string
     
 }
 
